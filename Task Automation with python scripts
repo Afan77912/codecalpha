@@ -1,0 +1,53 @@
+import os
+import shutil
+
+# Define the path to the directory to organize
+source_directory = 'path/to/your/directory'  # Change this to your directory path
+
+# Define file types and their target folders
+file_types = {
+    'Documents': ['.pdf', '.txt', '.docx', '.xlsx'],
+    'Images': ['.jpg', '.jpeg', '.png', '.gif', '.bmp'],
+    'Videos': ['.mp4', '.avi', '.mkv', '.mov'],
+    'Audio': ['.mp3', '.wav', '.aac'],
+    'Archives': ['.zip', '.rar', '.tar', '.gz'],
+    'Code': ['.py', '.js', '.html', '.css'],
+}
+
+# Function to organize files
+def organize_files():
+    # Loop through all files in the directory
+    for filename in os.listdir(source_directory):
+        file_path = os.path.join(source_directory, filename)
+        
+        # Check if it's a file (not a directory)
+        if os.path.isfile(file_path):
+            file_extension = os.path.splitext(filename)[1].lower()  # Get file extension
+            moved = False
+            
+            # Loop through file types and move the file to the correct folder
+            for folder, extensions in file_types.items():
+                if file_extension in extensions:
+                    # Create folder if it doesn't exist
+                    folder_path = os.path.join(source_directory, folder)
+                    if not os.path.exists(folder_path):
+                        os.makedirs(folder_path)
+                    
+                    # Move the file
+                    shutil.move(file_path, os.path.join(folder_path, filename))
+                    print(f"Moved: {filename} -> {folder}")
+                    moved = True
+                    break
+            
+            # If the file type isn't recognized, move it to an "Others" folder
+            if not moved:
+                others_folder = os.path.join(source_directory, 'Others')
+                if not os.path.exists(others_folder):
+                    os.makedirs(others_folder)
+                
+                shutil.move(file_path, os.path.join(others_folder, filename))
+                print(f"Moved: {filename} -> Others")
+
+# Run the file organization function
+if __name__ == '__main__':
+    organize_files()
