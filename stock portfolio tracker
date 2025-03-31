@@ -1,0 +1,75 @@
+from flask import Flask, request, jsonify
+import sqlite3
+import yfinance as yf
+
+app = Flask(__name__)
+
+# Connect to the database
+def get_db_connection():
+    conn = sqlite3.connect('portfolio.db')
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# Add a stock to the portfolio
+@app.route('/add_stock', methods=['POST'])
+def add_stock():
+    data = request.get_json()
+    user_id = data['user_id']
+    symbol = data['symbol']
+    quantity = data['quantity']
+    purchase_price = data['purchase_price']
+    
+    conn = get_db_connection()
+    conn.execute('''
+        INSERT INTO portfolio (user_id, symbol, quantity, purchase_price) 
+        VALUES (?, ?, ?, ?)
+    ''', (user_id, symbol, quantity, purchase_price))
+    conn.commit()
+    conn.close()
+    return jsonify({"message": "Stock added successfully!"}), 200
+
+# Remove a stock from the portfolio
+@app.route('/remove_stock', methods=['POST'])
+def remove_stock():
+    data = request.get_json()
+    user_id = data['user_id']
+    symbol = data['symbol']
+    
+    conn = get_db_connection()
+    conn.execute('''
+        DELETE FROM portfolio WHERE user_id = ? AND symbol = ?
+    ''', (user_id, symbol))
+    conn.commit()
+    conn.close()
+    return jsonify({"message": "Stock removed successfully!"}), 200
+
+# Get real-time stock data
+def get_stock_data(symbol):
+    stock = yf.Ticker(symbol)
+    stock_data = stock.history(period="1d")
+    return stock_data['Close'][0]  # Returns the latest closing price
+
+# Track the performance of the portfolio
+@app.route('/track_portfolio', methods=['GET'])
+def track_portfolio():
+    user_id = request.args.get('user_id')
+    conn = get_db_connection()
+    stocks = conn.execute('SELECT * FROM portfolio WHERE user_id = ?', (user_id,)).fetchall()
+    conn.close()
+    
+    portfolio_value = 0
+    for stock in stocks:
+        symbol = stock['symbol']
+        quantity = stock['quantity']
+        purchase_price = stock['purchase_price']
+        current_price = get_stock_data(symbol)
+        stock_value = quantity * current_price
+        portfolio_value += stock_value
+    
+    return jsonify({
+        "portfolio_value": portfolio_value,
+        "stocks": [{"symbol": stock['symbol'], "quantity": stock['quantity'], "current_price": get_stock_data(stock['symbol'])} for stock in stocks]
+    })
+
+if __name__ == '__main__':
+    app.run(debug=True)
